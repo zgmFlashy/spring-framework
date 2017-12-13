@@ -19,6 +19,7 @@ package org.springframework.mock.http.client.reactive;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -55,8 +56,6 @@ public class MockClientHttpResponse implements ClientHttpResponse {
 
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
-	private boolean closed = false;
-
 
 	public MockClientHttpResponse(HttpStatus status) {
 		Assert.notNull(status, "HttpStatus is required");
@@ -64,15 +63,22 @@ public class MockClientHttpResponse implements ClientHttpResponse {
 	}
 
 
+	@Override
 	public HttpStatus getStatusCode() {
 		return this.status;
 	}
 
 	@Override
 	public HttpHeaders getHeaders() {
+		String headerName = HttpHeaders.SET_COOKIE;
+		if (!getCookies().isEmpty() && this.headers.get(headerName) == null) {
+			getCookies().values().stream().flatMap(Collection::stream)
+					.forEach(cookie -> getHeaders().add(headerName, cookie.toString()));
+		}
 		return this.headers;
 	}
 
+	@Override
 	public MultiValueMap<String, ResponseCookie> getCookies() {
 		return this.cookies;
 	}
@@ -98,19 +104,7 @@ public class MockClientHttpResponse implements ClientHttpResponse {
 
 	@Override
 	public Flux<DataBuffer> getBody() {
-		if (this.closed) {
-			return Flux.error(new IllegalStateException("Connection has been closed."));
-		}
 		return this.body;
-	}
-
-	@Override
-	public void close() {
-		this.closed = true;
-	}
-
-	public boolean isClosed() {
-		return this.closed;
 	}
 
 	/**

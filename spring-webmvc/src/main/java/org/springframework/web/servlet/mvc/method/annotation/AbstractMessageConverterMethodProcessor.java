@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -210,34 +209,41 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 			}
 		}
 
-		HttpServletRequest request = inputMessage.getServletRequest();
-		List<MediaType> requestedMediaTypes = getAcceptableMediaTypes(request);
-		List<MediaType> producibleMediaTypes = getProducibleMediaTypes(request, valueType, declaredType);
 
-		if (outputValue != null && producibleMediaTypes.isEmpty()) {
-			throw new HttpMessageNotWritableException("No converter found for return value of type: " + valueType);
+		List<MediaType> mediaTypesToUse;
+
+		MediaType contentType = outputMessage.getHeaders().getContentType();
+		if (contentType != null && contentType.isConcrete()) {
+			mediaTypesToUse = Collections.singletonList(contentType);
 		}
+		else {
+			HttpServletRequest request = inputMessage.getServletRequest();
+			List<MediaType> requestedMediaTypes = getAcceptableMediaTypes(request);
+			List<MediaType> producibleMediaTypes = getProducibleMediaTypes(request, valueType, declaredType);
 
-		Set<MediaType> compatibleMediaTypes = new LinkedHashSet<>();
-		for (MediaType requestedType : requestedMediaTypes) {
-			for (MediaType producibleType : producibleMediaTypes) {
-				if (requestedType.isCompatibleWith(producibleType)) {
-					compatibleMediaTypes.add(getMostSpecificMediaType(requestedType, producibleType));
+			if (outputValue != null && producibleMediaTypes.isEmpty()) {
+				throw new HttpMessageNotWritableException(
+						"No converter found for return value of type: " + valueType);
+			}
+			mediaTypesToUse = new ArrayList<>();
+			for (MediaType requestedType : requestedMediaTypes) {
+				for (MediaType producibleType : producibleMediaTypes) {
+					if (requestedType.isCompatibleWith(producibleType)) {
+						mediaTypesToUse.add(getMostSpecificMediaType(requestedType, producibleType));
+					}
 				}
 			}
-		}
-		if (compatibleMediaTypes.isEmpty()) {
-			if (outputValue != null) {
-				throw new HttpMediaTypeNotAcceptableException(producibleMediaTypes);
+			if (mediaTypesToUse.isEmpty()) {
+				if (outputValue != null) {
+					throw new HttpMediaTypeNotAcceptableException(producibleMediaTypes);
+				}
+				return;
 			}
-			return;
+			MediaType.sortBySpecificityAndQuality(mediaTypesToUse);
 		}
-
-		List<MediaType> mediaTypes = new ArrayList<>(compatibleMediaTypes);
-		MediaType.sortBySpecificityAndQuality(mediaTypes);
 
 		MediaType selectedMediaType = null;
-		for (MediaType mediaType : mediaTypes) {
+		for (MediaType mediaType : mediaTypesToUse) {
 			if (mediaType.isConcrete()) {
 				selectedMediaType = mediaType;
 				break;
@@ -356,9 +362,11 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 		}
 	}
 
-	private List<MediaType> getAcceptableMediaTypes(HttpServletRequest request) throws HttpMediaTypeNotAcceptableException {
-		List<MediaType> mediaTypes = this.contentNegotiationManager.resolveMediaTypes(new ServletWebRequest(request));
-		return (mediaTypes.isEmpty() ? Collections.singletonList(MediaType.ALL) : mediaTypes);
+	private List<MediaType> getAcceptableMediaTypes(HttpServletRequest request)
+			throws HttpMediaTypeNotAcceptableException {
+
+		List<MediaType> types = this.contentNegotiationManager.resolveMediaTypes(new ServletWebRequest(request));
+		return (types.isEmpty() ? Collections.singletonList(MediaType.ALL) : types);
 	}
 
 	/**

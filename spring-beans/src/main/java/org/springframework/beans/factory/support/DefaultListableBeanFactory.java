@@ -505,6 +505,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T> Map<String, T> getBeansOfType(@Nullable Class<T> type, boolean includeNonSingletons, boolean allowEagerInit)
 			throws BeansException {
 
@@ -512,7 +513,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		Map<String, T> result = new LinkedHashMap<>(beanNames.length);
 		for (String beanName : beanNames) {
 			try {
-				result.put(beanName, getBean(beanName, type));
+				Object beanInstance = getBean(beanName);
+				result.put(beanName, (beanInstance instanceof NullBean ? null : (T) beanInstance));
 			}
 			catch (BeanCreationException ex) {
 				Throwable rootCause = ex.getMostSpecificCause();
@@ -1317,7 +1319,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			DependencyDescriptor descriptor, Class<?> requiredType) {
 
 		if (descriptor instanceof MultiElementDescriptor || containsSingleton(candidateName)) {
-			candidates.put(candidateName, descriptor.resolveCandidate(candidateName, requiredType, this));
+			Object beanInstance = descriptor.resolveCandidate(candidateName, requiredType, this);
+			candidates.put(candidateName, (beanInstance instanceof NullBean ? null : beanInstance));
 		}
 		else {
 			candidates.put(candidateName, getType(candidateName));

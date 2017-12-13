@@ -32,6 +32,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
@@ -82,6 +83,7 @@ import org.springframework.web.servlet.handler.AbstractHandlerMapping;
 import org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping;
 import org.springframework.web.servlet.handler.ConversionServiceExposingInterceptor;
 import org.springframework.web.servlet.handler.HandlerExceptionResolverComposite;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 import org.springframework.web.servlet.mvc.Controller;
 import org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter;
 import org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter;
@@ -103,9 +105,9 @@ import org.springframework.web.util.UrlPathHelper;
  * It is typically imported by adding {@link EnableWebMvc @EnableWebMvc} to an
  * application {@link Configuration @Configuration} class. An alternative more
  * advanced option is to extend directly from this class and override methods as
- * necessary remembering to add {@link Configuration @Configuration} to the
+ * necessary, remembering to add {@link Configuration @Configuration} to the
  * subclass and {@link Bean @Bean} to overridden {@link Bean @Bean} methods.
- * For more details see the Javadoc of {@link EnableWebMvc @EnableWebMvc}.
+ * For more details see the javadoc of {@link EnableWebMvc @EnableWebMvc}.
  *
  * <p>This class registers the following {@link HandlerMapping}s:</p>
  * <ul>
@@ -173,29 +175,38 @@ import org.springframework.web.util.UrlPathHelper;
 public class WebMvcConfigurationSupport implements ApplicationContextAware, ServletContextAware {
 
 	private static boolean romePresent =
-			ClassUtils.isPresent("com.rometools.rome.feed.WireFeed", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("com.rometools.rome.feed.WireFeed",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean jaxb2Present =
-			ClassUtils.isPresent("javax.xml.bind.Binder", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("javax.xml.bind.Binder",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean jackson2Present =
-			ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", WebMvcConfigurationSupport.class.getClassLoader()) &&
-					ClassUtils.isPresent("com.fasterxml.jackson.core.JsonGenerator", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper",
+					WebMvcConfigurationSupport.class.getClassLoader()) &&
+			ClassUtils.isPresent("com.fasterxml.jackson.core.JsonGenerator",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean jackson2XmlPresent =
-			ClassUtils.isPresent("com.fasterxml.jackson.dataformat.xml.XmlMapper", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("com.fasterxml.jackson.dataformat.xml.XmlMapper",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean jackson2SmilePresent =
-			ClassUtils.isPresent("com.fasterxml.jackson.dataformat.smile.SmileFactory", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("com.fasterxml.jackson.dataformat.smile.SmileFactory",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean jackson2CborPresent =
-			ClassUtils.isPresent("com.fasterxml.jackson.dataformat.cbor.CBORFactory", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("com.fasterxml.jackson.dataformat.cbor.CBORFactory",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean gsonPresent =
-			ClassUtils.isPresent("com.google.gson.Gson", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("com.google.gson.Gson",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 	private static final boolean jsonbPresent =
-			ClassUtils.isPresent("javax.json.bind.Jsonb", WebMvcConfigurationSupport.class.getClassLoader());
+			ClassUtils.isPresent("javax.json.bind.Jsonb",
+					WebMvcConfigurationSupport.class.getClassLoader());
 
 
 	@Nullable
@@ -391,12 +402,7 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 			ContentNegotiationConfigurer configurer = new ContentNegotiationConfigurer(this.servletContext);
 			configurer.mediaTypes(getDefaultMediaTypes());
 			configureContentNegotiation(configurer);
-			try {
-				this.contentNegotiationManager = configurer.getContentNegotiationManager();
-			}
-			catch (Throwable ex) {
-				throw new BeanInitializationException("Could not create ContentNegotiationManager", ex);
-			}
+			this.contentNegotiationManager = configurer.buildContentNegotiationManager();
 		}
 		return this.contentNegotiationManager;
 	}
@@ -436,11 +442,10 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 	 */
 	@Bean
 	public HandlerMapping viewControllerHandlerMapping() {
-		ViewControllerRegistry registry = new ViewControllerRegistry();
-		registry.setApplicationContext(this.applicationContext);
+		ViewControllerRegistry registry = new ViewControllerRegistry(this.applicationContext);
 		addViewControllers(registry);
 
-		AbstractHandlerMapping handlerMapping = registry.getHandlerMapping();
+		AbstractHandlerMapping handlerMapping = registry.buildHandlerMapping();
 		handlerMapping = (handlerMapping != null ? handlerMapping : new EmptyHandlerMapping());
 		handlerMapping.setPathMatcher(mvcPathMatcher());
 		handlerMapping.setUrlPathHelper(mvcUrlPathHelper());
@@ -480,14 +485,14 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 		Assert.state(this.servletContext != null, "No ServletContext set");
 
 		ResourceHandlerRegistry registry = new ResourceHandlerRegistry(this.applicationContext,
-				this.servletContext, mvcContentNegotiationManager());
+				this.servletContext, mvcContentNegotiationManager(), mvcUrlPathHelper());
 		addResourceHandlers(registry);
 
 		AbstractHandlerMapping handlerMapping = registry.getHandlerMapping();
 		if (handlerMapping != null) {
 			handlerMapping.setPathMatcher(mvcPathMatcher());
 			handlerMapping.setUrlPathHelper(mvcUrlPathHelper());
-			handlerMapping.setInterceptors(new ResourceUrlProviderExposingInterceptor(mvcResourceUrlProvider()));
+			handlerMapping.setInterceptors(getInterceptors());
 			handlerMapping.setCorsConfigurations(getCorsConfigurations());
 		}
 		else {
@@ -531,9 +536,9 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 		Assert.state(this.servletContext != null, "No ServletContext set");
 		DefaultServletHandlerConfigurer configurer = new DefaultServletHandlerConfigurer(this.servletContext);
 		configureDefaultServletHandling(configurer);
-		AbstractHandlerMapping handlerMapping = configurer.getHandlerMapping();
-		handlerMapping = handlerMapping != null ? handlerMapping : new EmptyHandlerMapping();
-		return handlerMapping;
+
+		HandlerMapping handlerMapping = configurer.buildHandlerMapping();
+		return (handlerMapping != null ? handlerMapping : new EmptyHandlerMapping());
 	}
 
 	/**
@@ -785,11 +790,11 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 	 * @param messageConverters the list to add the default message converters to
 	 */
 	protected final void addDefaultHttpMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
-		StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
-		stringConverter.setWriteAcceptCharset(false);
+		StringHttpMessageConverter stringHttpMessageConverter = new StringHttpMessageConverter();
+		stringHttpMessageConverter.setWriteAcceptCharset(false);  // see SPR-7316
 
 		messageConverters.add(new ByteArrayHttpMessageConverter());
-		messageConverters.add(stringConverter);
+		messageConverters.add(stringHttpMessageConverter);
 		messageConverters.add(new ResourceHttpMessageConverter());
 		messageConverters.add(new ResourceRegionHttpMessageConverter());
 		messageConverters.add(new SourceHttpMessageConverter<>());
@@ -975,14 +980,11 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 	 */
 	@Bean
 	public ViewResolver mvcViewResolver() {
-		ViewResolverRegistry registry = new ViewResolverRegistry();
-		registry.setContentNegotiationManager(mvcContentNegotiationManager());
-		if (this.applicationContext != null) {
-			registry.setApplicationContext(this.applicationContext);
-		}
+		ViewResolverRegistry registry = new ViewResolverRegistry(
+				mvcContentNegotiationManager(), this.applicationContext);
 		configureViewResolvers(registry);
 
-		if (registry.getViewResolvers().isEmpty()) {
+		if (registry.getViewResolvers().isEmpty() && this.applicationContext != null) {
 			String[] names = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 					this.applicationContext, ViewResolver.class, true, false);
 			if (names.length == 1) {
@@ -993,7 +995,9 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 		ViewResolverComposite composite = new ViewResolverComposite();
 		composite.setOrder(registry.getOrder());
 		composite.setViewResolvers(registry.getViewResolvers());
-		composite.setApplicationContext(this.applicationContext);
+		if (this.applicationContext != null) {
+			composite.setApplicationContext(this.applicationContext);
+		}
 		if (this.servletContext != null) {
 			composite.setServletContext(this.servletContext);
 		}
@@ -1028,6 +1032,12 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 	 */
 	protected void addCorsMappings(CorsRegistry registry) {
 	}
+
+	@Bean @Lazy
+	public HandlerMappingIntrospector mvcHandlerMappingIntrospector() {
+		return new HandlerMappingIntrospector();
+	}
+
 
 
 	private static final class EmptyHandlerMapping extends AbstractHandlerMapping {

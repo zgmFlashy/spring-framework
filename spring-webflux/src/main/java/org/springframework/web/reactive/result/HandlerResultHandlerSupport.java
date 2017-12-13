@@ -116,6 +116,11 @@ public abstract class HandlerResultHandlerSupport implements Ordered {
 	protected MediaType selectMediaType(ServerWebExchange exchange,
 			Supplier<List<MediaType>> producibleTypesSupplier) {
 
+		MediaType contentType = exchange.getResponse().getHeaders().getContentType();
+		if (contentType != null && contentType.isConcrete()) {
+			return contentType;
+		}
+
 		List<MediaType> acceptableTypes = getAcceptableTypes(exchange);
 		List<MediaType> producibleTypes = getProducibleTypes(exchange, producibleTypesSupplier);
 

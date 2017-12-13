@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.http.codec.json;
 
 import java.io.IOException;
@@ -53,7 +54,6 @@ import org.springframework.util.MimeType;
  * @since 5.0
  */
 public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport implements HttpMessageDecoder<Object> {
-
 
 	/**
 	 * Constructor with a Jackson {@link ObjectMapper} to use.
@@ -116,7 +116,7 @@ public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport imple
 
 		return tokens.map(tokenBuffer -> {
 			try {
-				return reader.readValue(tokenBuffer.asParser());
+				return reader.readValue(tokenBuffer.asParser(getObjectMapper()));
 			}
 			catch (InvalidDefinitionException ex) {
 				throw new CodecException("Type definition error: " + ex.getType(), ex);
@@ -144,4 +144,5 @@ public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport imple
 	protected <A extends Annotation> A getAnnotation(MethodParameter parameter, Class<A> annotType) {
 		return parameter.getParameterAnnotation(annotType);
 	}
+
 }

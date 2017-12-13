@@ -132,6 +132,7 @@ public abstract class JdbcUtils {
 	 * @throws SQLException if thrown by the JDBC API
 	 * @see #getResultSetValue(ResultSet, int)
 	 */
+	@Nullable
 	public static Object getResultSetValue(ResultSet rs, int index, @Nullable Class<?> requiredType) throws SQLException {
 		if (requiredType == null) {
 			return getResultSetValue(rs, index);
@@ -310,7 +311,6 @@ public abstract class JdbcUtils {
 	 * the DatabaseMetaDataCallback's {@code processMetaData} method
 	 * @throws MetaDataAccessException if meta data access failed
 	 */
-	@Nullable
 	public static Object extractDatabaseMetaData(DataSource dataSource, DatabaseMetaDataCallback action)
 			throws MetaDataAccessException {
 
@@ -350,7 +350,6 @@ public abstract class JdbcUtils {
 	 * @see java.sql.DatabaseMetaData
 	 */
 	@SuppressWarnings("unchecked")
-	@Nullable
 	public static <T> T extractDatabaseMetaData(DataSource dataSource, final String metaDataMethodName)
 			throws MetaDataAccessException {
 
@@ -470,24 +469,24 @@ public abstract class JdbcUtils {
 		StringBuilder result = new StringBuilder();
 		boolean nextIsUpper = false;
 		if (name != null && name.length() > 0) {
-			if (name.length() > 1 && name.substring(1, 2).equals("_")) {
-				result.append(name.substring(0, 1).toUpperCase());
+			if (name.length() > 1 && name.charAt(1) == '_') {
+				result.append(Character.toUpperCase(name.charAt(0)));
 			}
 			else {
-				result.append(name.substring(0, 1).toLowerCase());
+				result.append(Character.toLowerCase(name.charAt(0)));
 			}
 			for (int i = 1; i < name.length(); i++) {
-				String s = name.substring(i, i + 1);
-				if (s.equals("_")) {
+				char c = name.charAt(i);
+				if (c == '_') {
 					nextIsUpper = true;
 				}
 				else {
 					if (nextIsUpper) {
-						result.append(s.toUpperCase());
+						result.append(Character.toUpperCase(c));
 						nextIsUpper = false;
 					}
 					else {
-						result.append(s.toLowerCase());
+						result.append(Character.toLowerCase(c));
 					}
 				}
 			}

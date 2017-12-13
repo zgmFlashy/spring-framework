@@ -19,6 +19,7 @@ package org.springframework.http.server.reactive;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import javax.net.ssl.SSLSession;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -31,9 +32,11 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 
 /**
  * Adapt {@link ServerHttpRequest} to the Reactor {@link HttpServerRequest}.
@@ -42,7 +45,7 @@ import org.springframework.util.MultiValueMap;
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
+class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 
 	private final HttpServerRequest request;
 
@@ -60,7 +63,7 @@ public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 
 	private static URI initUri(HttpServerRequest request) throws URISyntaxException {
 		Assert.notNull(request, "'request' must not be null");
-		return new URI(resolveBaseUrl(request).toString() + request.uri());
+		return new URI(resolveBaseUrl(request).toString() + resolveRequestUri(request));
 	}
 
 	private static URI resolveBaseUrl(HttpServerRequest request) throws URISyntaxException {
@@ -100,6 +103,28 @@ public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 		return ssl ? "https" : "http";
 	}
 
+	private static String resolveRequestUri(HttpServerRequest request) {
+		String uri = request.uri();
+		for (int i = 0; i < uri.length(); i++) {
+			char c = uri.charAt(i);
+			if (c == '/' || c == '?' || c == '#') {
+				break;
+			}
+			if (c == ':' && (i + 2 < uri.length())) {
+				if (uri.charAt(i + 1) == '/' && uri.charAt(i + 2) == '/') {
+					for (int j = i + 3; j < uri.length(); j++) {
+						c = uri.charAt(j);
+						if (c == '/' || c == '?' || c == '#') {
+							return uri.substring(j);
+						}
+					}
+					return "";
+				}
+			}
+		}
+		return uri;
+	}
+
 	private static HttpHeaders initHeaders(HttpServerRequest channel) {
 		HttpHeaders headers = new HttpHeaders();
 		for (String name : channel.requestHeaders().names()) {
@@ -108,10 +133,6 @@ public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 		return headers;
 	}
 
-
-	public HttpServerRequest getReactorRequest() {
-		return this.request;
-	}
 
 	@Override
 	public String getMethodValue() {
@@ -135,9 +156,25 @@ public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 		return this.request.remoteAddress();
 	}
 
+	@Nullable
+	protected SslInfo initSslInfo() {
+		SslHandler sslHandler = this.request.context().channel().pipeline().get(SslHandler.class);
+		if (sslHandler != null) {
+			SSLSession session = sslHandler.engine().getSession();
+			return new DefaultSslInfo(session);
+		}
+		return null;
+	}
+
 	@Override
 	public Flux<DataBuffer> getBody() {
 		return this.request.receive().retain().map(this.bufferFactory::wrap);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> T getNativeRequest() {
+		return (T) this.request;
 	}
 
 }

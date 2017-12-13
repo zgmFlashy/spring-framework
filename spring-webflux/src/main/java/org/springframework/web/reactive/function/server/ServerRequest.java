@@ -45,6 +45,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebSession;
+import org.springframework.web.util.UriBuilder;
 
 /**
  * Represents a server-side HTTP request, as handled by a {@code HandlerFunction}.
@@ -59,14 +60,34 @@ public interface ServerRequest {
 
 	/**
 	 * Return the HTTP method.
+	 * @return the HTTP method as an HttpMethod enum value, or {@code null}
+	 * if not resolvable (e.g. in case of a non-standard HTTP method)
 	 */
 	@Nullable
-	HttpMethod method();
+	default HttpMethod method() {
+		return HttpMethod.resolve(methodName());
+	}
+
+	/**
+	 * Return the name of the HTTP method.
+	 * @return the HTTP method as a String
+	 */
+	String methodName();
 
 	/**
 	 * Return the request URI.
 	 */
 	URI uri();
+
+	/**
+	 * Return a {@code UriBuilderComponents}  from the URI associated with this
+	 * {@code ServerRequest}, while also overlaying with values from the headers
+	 * "Forwarded" (<a href="http://tools.ietf.org/html/rfc7239">RFC 7239</a>),
+	 * or "X-Forwarded-Host", "X-Forwarded-Port", and "X-Forwarded-Proto" if
+	 * "Forwarded" is not found.
+	 * @return a URI builder
+	 */
+	UriBuilder uriBuilder();
 
 	/**
 	 * Return the request path.

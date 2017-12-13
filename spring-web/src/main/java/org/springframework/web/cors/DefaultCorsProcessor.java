@@ -58,8 +58,8 @@ public class DefaultCorsProcessor implements CorsProcessor {
 
 	@Override
 	@SuppressWarnings("resource")
-	public boolean processRequest(@Nullable CorsConfiguration config, HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
+	public boolean processRequest(@Nullable CorsConfiguration config, HttpServletRequest request,
+			HttpServletResponse response) throws IOException {
 
 		if (!CorsUtils.isCorsRequest(request)) {
 			return true;
@@ -119,6 +119,10 @@ public class DefaultCorsProcessor implements CorsProcessor {
 
 		String requestOrigin = request.getHeaders().getOrigin();
 		String allowOrigin = checkOrigin(config, requestOrigin);
+		HttpHeaders responseHeaders = response.getHeaders();
+
+		responseHeaders.add(HttpHeaders.VARY, HttpHeaders.ORIGIN);
+
 		if (allowOrigin == null) {
 			logger.debug("Rejecting CORS request because '" + requestOrigin + "' origin is not allowed");
 			rejectRequest(response);
@@ -141,9 +145,7 @@ public class DefaultCorsProcessor implements CorsProcessor {
 			return false;
 		}
 
-		HttpHeaders responseHeaders = response.getHeaders();
 		responseHeaders.setAccessControlAllowOrigin(allowOrigin);
-		responseHeaders.add(HttpHeaders.VARY, HttpHeaders.ORIGIN);
 
 		if (preFlightRequest) {
 			responseHeaders.setAccessControlAllowMethods(allowMethods);

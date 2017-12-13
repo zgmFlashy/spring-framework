@@ -66,7 +66,8 @@ dokka {
 	outputDirectory = "$buildDir/docs/kdoc"
 
 	sourceDirs = files(subprojects.collect { project ->
-		project.sourceSets.main.kotlin.srcDirs
+		def kotlinDirs = project.sourceSets.main.kotlin.srcDirs.collect()
+		kotlinDirs -= project.sourceSets.main.java.srcDirs
 	})
 	externalDocumentationLink {
 		url = new URL("http://docs.spring.io/spring-framework/docs/${version}/javadoc-api/")
@@ -82,6 +83,11 @@ dokka {
 asciidoctor {
 	sources {
 		include '*.adoc'
+	}
+	resources {
+		from(sourceDir) {
+			include 'images/*', 'stylesheets/*', 'tocbot-3.0.2/*'
+		}
 	}
 	logDocuments = true
 	backends = ["html5"]
@@ -99,7 +105,7 @@ asciidoctor {
 			sectnums: '',
 			'source-highlighter': 'coderay@', // TODO switch to 'rouge' once supported by the html5 backend
 			stylesdir: 'stylesheets/',
-			stylesheet: 'spring.css',
+			stylesheet: 'main.css',
 			'spring-version': project.version
 
 }

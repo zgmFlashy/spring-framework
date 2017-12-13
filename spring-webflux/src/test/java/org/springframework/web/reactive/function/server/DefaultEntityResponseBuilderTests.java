@@ -39,17 +39,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.codec.EncoderHttpMessageWriter;
 import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
-import org.springframework.mock.http.server.reactive.test.MockServerWebExchange;
+import org.springframework.mock.web.test.server.MockServerWebExchange;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.result.view.ViewResolver;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.*;
 
 /**
  * @author Arjen Poutsma
@@ -177,6 +179,18 @@ public class DefaultEntityResponseBuilderTests {
 	}
 
 	@Test
+	public void cookies() throws Exception {
+		MultiValueMap<String, ResponseCookie> newCookies = new LinkedMultiValueMap<>();
+		newCookies.add("name", ResponseCookie.from("name", "value").build());
+		Mono<EntityResponse<String>> result =
+				EntityResponse.fromObject("foo").cookies(cookies -> cookies.addAll(newCookies)).build();
+		StepVerifier.create(result)
+				.expectNextMatches(response -> newCookies.equals(response.cookies()))
+				.expectComplete()
+				.verify();
+	}
+
+	@Test
 	public void bodyInserter() throws Exception {
 		String body = "foo";
 		Publisher<String> publisher = Mono.just(body);
@@ -191,17 +205,17 @@ public class DefaultEntityResponseBuilderTests {
 
 		Mono<EntityResponse<Publisher<String>>> result = EntityResponse.fromPublisher(publisher, String.class).build();
 
-		MockServerWebExchange exchange = MockServerHttpRequest.get("http://localhost").toExchange();
+		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("http://localhost"));
 
 		ServerResponse.Context context = new ServerResponse.Context() {
 			@Override
 			public List<HttpMessageWriter<?>> messageWriters() {
-				return Collections.<HttpMessageWriter<?>>singletonList(new EncoderHttpMessageWriter<>(CharSequenceEncoder.allMimeTypes()));
+				return Collections.singletonList(new EncoderHttpMessageWriter<>(CharSequenceEncoder.allMimeTypes()));
 			}
 
 			@Override
 			public List<ViewResolver> viewResolvers() {
-				return Collections.<ViewResolver>emptyList();
+				return Collections.emptyList();
 			}
 		};
 		StepVerifier.create(result)

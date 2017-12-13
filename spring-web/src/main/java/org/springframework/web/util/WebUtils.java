@@ -299,7 +299,6 @@ public abstract class WebUtils {
 	 * @return the value of the session attribute, or {@code null} if not found
 	 * @throws IllegalStateException if the session attribute could not be found
 	 */
-	@Nullable
 	public static Object getRequiredSessionAttribute(HttpServletRequest request, String name)
 			throws IllegalStateException {
 
@@ -436,7 +435,9 @@ public abstract class WebUtils {
 	 * @param ex the exception encountered
 	 * @param servletName the name of the offending servlet
 	 */
-	public static void exposeErrorRequestAttributes(HttpServletRequest request, Throwable ex, @Nullable String servletName) {
+	public static void exposeErrorRequestAttributes(HttpServletRequest request, Throwable ex,
+			@Nullable String servletName) {
+
 		exposeRequestAttributeIfNotPresent(request, ERROR_STATUS_CODE_ATTRIBUTE, HttpServletResponse.SC_OK);
 		exposeRequestAttributeIfNotPresent(request, ERROR_EXCEPTION_TYPE_ATTRIBUTE, ex.getClass());
 		exposeRequestAttributeIfNotPresent(request, ERROR_MESSAGE_ATTRIBUTE, ex.getMessage());

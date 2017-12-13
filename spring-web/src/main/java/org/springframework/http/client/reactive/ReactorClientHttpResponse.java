@@ -37,7 +37,7 @@ import org.springframework.util.MultiValueMap;
  * @since 5.0
  * @see reactor.ipc.netty.http.client.HttpClient
  */
-public class ReactorClientHttpResponse implements ClientHttpResponse {
+class ReactorClientHttpResponse implements ClientHttpResponse {
 
 	private final NettyDataBufferFactory dataBufferFactory;
 
@@ -87,11 +87,6 @@ public class ReactorClientHttpResponse implements ClientHttpResponse {
 					result.add(cookie.name(), responseCookie);
 				});
 		return CollectionUtils.unmodifiableMultiValueMap(result);
-	}
-
-	@Override
-	public void close() {
-		this.response.dispose();
 	}
 
 	@Override

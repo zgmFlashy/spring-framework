@@ -20,10 +20,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Kotlin tests for {@link BeanUtils}
+ * Kotlin tests for {@link BeanUtils}.
  * 
  * @author Sebastien Deleuze
  */
+@Suppress("unused", "UNUSED_PARAMETER")
 class BeanUtilsKotlinTests {
 
 	@Test
@@ -70,5 +71,29 @@ class BeanUtilsKotlinTests {
 	class Bar(val param1: String, val param2: Int = 12)
 
 	class Baz(var param1: String = "a", var param2: Int = 12)
+
+	class TwoConstructorsWithDefaultOne {
+
+		constructor()
+
+		constructor(param1: String)
+	}
+
+	class TwoConstructorsWithoutDefaultOne {
+
+		constructor(param1: String)
+
+		constructor(param1: String, param2: String)
+	}
+
+	class OneConstructorWithDefaultOne {
+
+		constructor()
+	}
+
+	class OneConstructorWithoutDefaultOne {
+
+		constructor(param1: String)
+	}
 
 }

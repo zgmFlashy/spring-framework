@@ -76,7 +76,7 @@ dependencies {
 	compile(files(cglibRepackJar))
 	compile(files(objenesisRepackJar))
 	compile(project(":spring-jcl"))
-	optional("net.sf.jopt-simple:jopt-simple:5.0.3")
+	optional("net.sf.jopt-simple:jopt-simple:5.0.4")
 	optional("org.aspectj:aspectjweaver:${aspectjVersion}")
 	optional("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
 	optional("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
@@ -86,7 +86,7 @@ dependencies {
 	optional("io.reactivex.rxjava2:rxjava:${rxjava2Version}")
 	optional("io.netty:netty-buffer")
 	testCompile("io.projectreactor:reactor-test")
-	testCompile("javax.xml.bind:jaxb-api:${jaxbVersion}")
+	testCompile("javax.xml.bind:jaxb-api:2.3.0")
 	testCompile("org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}")
 	testCompile("com.fasterxml.woodstox:woodstox-core:5.0.3") {
 		exclude group: "stax", module: "stax-api"

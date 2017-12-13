@@ -152,7 +152,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 
 	private DeferredResultProcessingInterceptor[] deferredResultInterceptors = new DeferredResultProcessingInterceptor[0];
 
-	private ReactiveAdapterRegistry reactiveRegistry = new ReactiveAdapterRegistry();
+	private ReactiveAdapterRegistry reactiveRegistry = ReactiveAdapterRegistry.getSharedInstance();
 
 	private boolean ignoreDefaultModelOnRedirect = false;
 
@@ -250,7 +250,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	 */
 	@Nullable
 	public List<HandlerMethodArgumentResolver> getInitBinderArgumentResolvers() {
-		return (this.initBinderArgumentResolvers != null) ? this.initBinderArgumentResolvers.getResolvers() : null;
+		return (this.initBinderArgumentResolvers != null ? this.initBinderArgumentResolvers.getResolvers() : null);
 	}
 
 	/**
@@ -427,14 +427,16 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	/**
 	 * Configure the registry for reactive library types to be supported as
 	 * return values from controller methods.
+	 * @since 5.0
 	 */
 	public void setReactiveRegistry(ReactiveAdapterRegistry reactiveRegistry) {
 		Assert.notNull(reactiveRegistry, "ReactiveAdapterRegistry is required");
-		this.reactiveRegistry = this.reactiveRegistry;
+		this.reactiveRegistry = reactiveRegistry;
 	}
 
 	/**
 	 * Return the configured reactive type registry of adapters.
+	 * @since 5.0
 	 */
 	public ReactiveAdapterRegistry getReactiveAdapterRegistry() {
 		return this.reactiveRegistry;

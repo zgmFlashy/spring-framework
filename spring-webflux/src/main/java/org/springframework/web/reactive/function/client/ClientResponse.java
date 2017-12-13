@@ -16,7 +16,6 @@
 
 package org.springframework.web.reactive.function.client;
 
-import java.io.Closeable;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -35,16 +34,24 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyExtractor;
 
 /**
- * Represents an HTTP response, as returned by the {@link ExchangeFunction}.
- * Access to headers and body is offered by {@link Headers} and
- * {@link #body(BodyExtractor)}, {@link #bodyToMono(Class)}, {@link #bodyToFlux(Class)}
- * respectively.
+ * Represents an HTTP response, as returned by {@link WebClient} and also
+ * {@link ExchangeFunction}. Provides access to the response status and headers,
+ * and also methods to consume the response body.
+ *
+ * <p><strong>NOTE:</strong> When given access to a {@link ClientResponse},
+ * through the {@code WebClient}
+ * {@link WebClient.RequestHeadersSpec#exchange() exchange()} method,
+ * you must always use one of the body or toEntity methods to ensure resources
+ * are released and avoid potential issues with HTTP connection pooling.
+ * You can use {@code bodyToMono(Void.class)} if no response content is
+ * expected. However keep in mind that if the response does have content, the
+ * connection will be closed and will not be placed back in the pool.
  *
  * @author Brian Clozel
  * @author Arjen Poutsma
  * @since 5.0
  */
-public interface ClientResponse extends Closeable {
+public interface ClientResponse {
 
 	/**
 	 * Return the status code of this response.
@@ -132,19 +139,6 @@ public interface ClientResponse extends Closeable {
 	 * @return {@code Mono} with the list of {@code ResponseEntity}s
 	 */
 	<T> Mono<ResponseEntity<List<T>>> toEntityList(ParameterizedTypeReference<T> typeReference);
-
-	/**
-	 * Close this response, freeing any resources created.
-	 * <p>This non-blocking method has to be called once the response has been processed
-	 * and the resources are no longer needed.
-	 * <p>{@code ClientResponse.bodyTo*}, {@code ClientResponse.toEntity*}
-	 * and all methods under {@code WebClient.retrieve()} will close the response
-	 * automatically.
-	 * <p>It is required to call close() manually otherwise; not doing so might
-	 * create resource leaks or connection issues.
-	 */
-	@Override
-	void close();
 
 
 	/**

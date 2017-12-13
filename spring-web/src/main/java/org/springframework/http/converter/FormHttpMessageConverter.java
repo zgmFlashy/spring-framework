@@ -108,9 +108,10 @@ public class FormHttpMessageConverter implements HttpMessageConverter<MultiValue
 		this.supportedMediaTypes.add(MediaType.APPLICATION_FORM_URLENCODED);
 		this.supportedMediaTypes.add(MediaType.MULTIPART_FORM_DATA);
 
-		this.partConverters.add(new ByteArrayHttpMessageConverter());
 		StringHttpMessageConverter stringHttpMessageConverter = new StringHttpMessageConverter();
-		stringHttpMessageConverter.setWriteAcceptCharset(false);
+		stringHttpMessageConverter.setWriteAcceptCharset(false);  // see SPR-7316
+
+		this.partConverters.add(new ByteArrayHttpMessageConverter());
 		this.partConverters.add(stringHttpMessageConverter);
 		this.partConverters.add(new ResourceHttpMessageConverter());
 
@@ -186,11 +187,9 @@ public class FormHttpMessageConverter implements HttpMessageConverter<MultiValue
 	 * Set the character set to use when writing multipart data to encode file
 	 * names. Encoding is based on the "encoded-word" syntax defined in RFC 2047
 	 * and relies on {@code MimeUtility} from "javax.mail".
-	 *
 	 * <p>As of 5.0 by default part headers, including Content-Disposition (and
 	 * its filename parameter) will be encoded based on the setting of
 	 * {@link #setCharset(Charset)} or {@code UTF-8} by default.
-	 *
 	 * @since 4.1.1
 	 * @see <a href="http://en.wikipedia.org/wiki/MIME#Encoded-Word">Encoded-Word</a>
 	 */
@@ -332,7 +331,9 @@ public class FormHttpMessageConverter implements HttpMessageConverter<MultiValue
 		}
 	}
 
-	private void writeMultipart(final MultiValueMap<String, Object> parts, HttpOutputMessage outputMessage) throws IOException {
+	private void writeMultipart(final MultiValueMap<String, Object> parts,
+			HttpOutputMessage outputMessage) throws IOException {
+
 		final byte[] boundary = generateMultipartBoundary();
 		Map<String, String> parameters = new HashMap<>(2);
 		parameters.put("boundary", new String(boundary, "US-ASCII"));

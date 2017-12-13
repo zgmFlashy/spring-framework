@@ -82,6 +82,8 @@ class ControllerMethodResolver {
 
 	private final List<HandlerMethodArgumentResolver> exceptionHandlerResolvers;
 
+	private final ReactiveAdapterRegistry reactiveAdapterRegistry;
+
 
 	private final Map<Class<?>, Set<Method>> initBinderMethodCache = new ConcurrentHashMap<>(64);
 
@@ -96,6 +98,8 @@ class ControllerMethodResolver {
 
 	private final Map<ControllerAdviceBean, ExceptionHandlerMethodResolver> exceptionHandlerAdviceCache =
 			new LinkedHashMap<>(64);
+
+	private final Map<Class<?>, SessionAttributesHandler> sessionAttributesHandlerCache = new ConcurrentHashMap<>(64);
 
 
 	ControllerMethodResolver(ArgumentResolverConfigurer argumentResolvers,
@@ -125,6 +129,8 @@ class ControllerMethodResolver {
 		addResolversTo(registrar, reactiveRegistry, context);
 		this.exceptionHandlerResolvers = registrar.getResolvers();
 
+		this.reactiveAdapterRegistry = reactiveRegistry;
+
 		initControllerAdviceCaches(context);
 	}
 
@@ -138,6 +144,8 @@ class ControllerMethodResolver {
 		registrar.add(new RequestParamMapMethodArgumentResolver(reactiveRegistry));
 		registrar.add(new PathVariableMethodArgumentResolver(beanFactory, reactiveRegistry));
 		registrar.add(new PathVariableMapMethodArgumentResolver(reactiveRegistry));
+		registrar.add(new MatrixVariableMethodArgumentResolver(beanFactory, reactiveRegistry));
+		registrar.add(new MatrixVariableMapMethodArgumentResolver(reactiveRegistry));
 		registrar.addIfRequestBody(readers -> new RequestBodyArgumentResolver(readers, reactiveRegistry));
 		registrar.addIfRequestBody(readers -> new RequestPartMethodArgumentResolver(readers, reactiveRegistry));
 		registrar.addIfModelAttribute(() -> new ModelAttributeMethodArgumentResolver(reactiveRegistry, false));
@@ -154,6 +162,7 @@ class ControllerMethodResolver {
 		registrar.addIfModelAttribute(() -> new ErrorsMethodArgumentResolver(reactiveRegistry));
 		registrar.add(new ServerWebExchangeArgumentResolver(reactiveRegistry));
 		registrar.add(new PrincipalArgumentResolver(reactiveRegistry));
+		registrar.addIfRequestBody(readers -> new SessionStatusMethodArgumentResolver());
 		registrar.add(new WebSessionArgumentResolver(reactiveRegistry));
 
 		// Custom...
@@ -211,6 +220,7 @@ class ControllerMethodResolver {
 	public InvocableHandlerMethod getRequestMappingMethod(HandlerMethod handlerMethod) {
 		InvocableHandlerMethod invocable = new InvocableHandlerMethod(handlerMethod);
 		invocable.setArgumentResolvers(this.requestMappingResolvers);
+		invocable.setReactiveAdapterRegistry(this.reactiveAdapterRegistry);
 		return invocable;
 	}
 
@@ -315,6 +325,25 @@ class ControllerMethodResolver {
 		return invocable;
 	}
 
+	/**
+	 * Return the handler for the type-level {@code @SessionAttributes} annotation
+	 * based on the given controller method.
+	 */
+	public SessionAttributesHandler getSessionAttributesHandler(HandlerMethod handlerMethod) {
+		Class<?> handlerType = handlerMethod.getBeanType();
+		SessionAttributesHandler result = this.sessionAttributesHandlerCache.get(handlerType);
+		if (result == null) {
+			synchronized (this.sessionAttributesHandlerCache) {
+				result = this.sessionAttributesHandlerCache.get(handlerType);
+				if (result == null) {
+					result = new SessionAttributesHandler(handlerType);
+					this.sessionAttributesHandlerCache.put(handlerType, result);
+				}
+			}
+		}
+		return result;
+	}
+
 
 	/** Filter for {@link InitBinder @InitBinder} methods. */
 	private static final ReflectionUtils.MethodFilter BINDER_METHODS = method ->
@@ -335,6 +364,7 @@ class ControllerMethodResolver {
 		private final boolean modelAttributeSupported;
 
 		private final List<HandlerMethodArgumentResolver> result = new ArrayList<>();
+
 
 		private ArgumentResolverRegistrar(ArgumentResolverConfigurer resolvers,
 				List<HttpMessageReader<?>> messageReaders, boolean modelAttribute) {

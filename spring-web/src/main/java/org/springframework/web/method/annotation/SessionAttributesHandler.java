@@ -44,6 +44,7 @@ import org.springframework.web.context.request.WebRequest;
  * {@link SessionStatus#setComplete()}.
  *
  * @author Rossen Stoyanchev
+ * @author Juergen Hoeller
  * @since 3.1
  */
 public class SessionAttributesHandler {
@@ -74,10 +75,7 @@ public class SessionAttributesHandler {
 			this.attributeNames.addAll(Arrays.asList(annotation.names()));
 			this.attributeTypes.addAll(Arrays.asList(annotation.types()));
 		}
-
-		for (String attributeName : this.attributeNames) {
-			this.knownAttributeNames.add(attributeName);
-		}
+		this.knownAttributeNames.addAll(this.attributeNames);
 	}
 
 	/**
@@ -90,7 +88,7 @@ public class SessionAttributesHandler {
 
 	/**
 	 * Whether the attribute name or type match the names and types specified
-	 * via {@code @SessionAttributes} in underlying controller.
+	 * via {@code @SessionAttributes} on the underlying controller.
 	 * <p>Attributes successfully resolved through this method are "remembered"
 	 * and subsequently used in {@link #retrieveAttributes(WebRequest)} and
 	 * {@link #cleanupAttributes(WebRequest)}.
@@ -157,7 +155,7 @@ public class SessionAttributesHandler {
 	 * A pass-through call to the underlying {@link SessionAttributeStore}.
 	 * @param request the current request
 	 * @param attributeName the name of the attribute of interest
-	 * @return the attribute value or {@code null}
+	 * @return the attribute value, or {@code null} if none
 	 */
 	@Nullable
 	Object retrieveAttribute(WebRequest request, String attributeName) {
